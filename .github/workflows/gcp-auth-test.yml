@@ -20,6 +20,7 @@ jobs:
         with:
           workload_identity_provider: 'projects/857898679571/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'github-deployer@playground-s-11-e49aa9b2.iam.gserviceaccount.com'
+          project_id: 'playground-s-11-e49aa9b2'
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
