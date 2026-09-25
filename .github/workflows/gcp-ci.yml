@@ -1,0 +1,60 @@
+name: GCP CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: playground-s-11-e49aa9b2
+  REGION: europe-west1
+  GAR_REPOSITORY: ahop
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/857898679571/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@playground-s-11-e49aa9b2.iam.gserviceaccount.com'
+          project_id: 'playground-s-11-e49aa9b2'
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build frontend
+        run: |
+          docker build \
+            -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/frontend:${GITHUB_SHA}" \
+            ./frontend
+
+      - name: Build backend
+        run: |
+          docker build \
+            -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/backend:${GITHUB_SHA}" \
+            ./backend
+
+      - name: Push frontend
+        run: |
+          docker push \
+            "${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/frontend:${GITHUB_SHA}"
+
+      - name: Push backend
+        run: |
+          docker push \
+            "${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/backend:${GITHUB_SHA}"
