@@ -19,6 +19,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    outputs:
+      backend_digest: ${{ steps.backend-digest.outputs.digest }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,6 +62,17 @@ jobs:
           docker push \
             "${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/backend:${GITHUB_SHA}"
 
+      - name: Resolve backend digest
+        id: backend-digest
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/backend:${GITHUB_SHA}"
+
+          DIGEST="$(gcloud artifacts docker images describe "$IMAGE" \
+            --format='value(image_summary.digest)')"
+
+          echo "Backend digest: $DIGEST"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
   deploy-dev:
     needs: build
     runs-on: ubuntu-latest
@@ -77,10 +91,14 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Show backend digest
+        run: |
+          echo "Deploying digest: ${{ needs.build.outputs.backend_digest }}"
+
       - name: Deploy backend to DEV
         run: |
           gcloud run deploy ahop-backend-dev \
-            --image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/backend:${GITHUB_SHA}" \
+            --image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/backend@${{ needs.build.outputs.backend_digest }}" \
             --region="${REGION}" \
             --platform=managed \
             --allow-unauthenticated
@@ -92,13 +110,20 @@ jobs:
             --format='value(status.url)')"
 
           echo "BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
+          echo "Backend URL: $BACKEND_URL"
 
       - name: Smoke test health
         run: |
-          curl --fail --show-error \
+          curl \
+            --fail \
+            --show-error \
+            --silent \
             "$BACKEND_URL/api/health"
 
       - name: Smoke test version
         run: |
-          curl --fail --show-error \
+          curl \
+            --fail \
+            --show-error \
+            --silent \
             "$BACKEND_URL/api/version"
