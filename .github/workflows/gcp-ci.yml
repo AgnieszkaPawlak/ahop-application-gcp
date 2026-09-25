@@ -187,3 +187,40 @@ jobs:
             --show-error \
             --silent \
             "$TEST_BACKEND_URL/api/version"
+
+  test-test-environment:
+    needs:
+      - deploy-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/857898679571/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@playground-s-11-e49aa9b2.iam.gserviceaccount.com'
+          project_id: 'playground-s-11-e49aa9b2'
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get TEST backend URL
+        run: |
+          TEST_BACKEND_URL="$(gcloud run services describe ahop-backend-test \
+            --region="${REGION}" \
+            --format='value(status.url)')"
+
+          echo "TEST_BACKEND_URL=$TEST_BACKEND_URL" >> "$GITHUB_ENV"
+
+      - name: Run TEST environment checks
+        run: |
+          echo "Testing $TEST_BACKEND_URL"
+
+          curl --fail --show-error \
+            "$TEST_BACKEND_URL/api/health"
+
+          curl --fail --show-error \
+            "$TEST_BACKEND_URL/api/version"
