@@ -59,46 +59,46 @@ jobs:
           docker push \
             "${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/backend:${GITHUB_SHA}"
 
-            deploy-dev:
-                needs: build
-                runs-on: ubuntu-latest
-            
-                steps:
-                  - name: Checkout
-                    uses: actions/checkout@v4
-            
-                  - name: Authenticate to Google Cloud
-                    uses: google-github-actions/auth@v2
-                    with:
-                      workload_identity_provider: 'projects/857898679571/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-                      service_account: 'github-deployer@playground-s-11-e49aa9b2.iam.gserviceaccount.com'
-                      project_id: 'playground-s-11-e49aa9b2'
-            
-                  - name: Setup gcloud
-                    uses: google-github-actions/setup-gcloud@v2
-            
-                  - name: Deploy backend to DEV
-                    run: |
-                      gcloud run deploy ahop-backend-dev \
-                        --image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/backend:${GITHUB_SHA}" \
-                        --region="${REGION}" \
-                        --platform=managed \
-                        --allow-unauthenticated
-            
-                  - name: Get backend URL
-                    run: |
-                      BACKEND_URL="$(gcloud run services describe ahop-backend-dev \
-                        --region="${REGION}" \
-                        --format='value(status.url)')"
-            
-                      echo "BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
-            
-                  - name: Smoke test health
-                    run: |
-                      curl --fail --show-error \
-                        "$BACKEND_URL/api/health"
-            
-                  - name: Smoke test version
-                    run: |
-                      curl --fail --show-error \
-                        "$BACKEND_URL/api/version"           
+  deploy-dev:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/857898679571/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@playground-s-11-e49aa9b2.iam.gserviceaccount.com'
+          project_id: 'playground-s-11-e49aa9b2'
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy backend to DEV
+        run: |
+          gcloud run deploy ahop-backend-dev \
+            --image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPOSITORY}/backend:${GITHUB_SHA}" \
+            --region="${REGION}" \
+            --platform=managed \
+            --allow-unauthenticated
+
+      - name: Get backend URL
+        run: |
+          BACKEND_URL="$(gcloud run services describe ahop-backend-dev \
+            --region="${REGION}" \
+            --format='value(status.url)')"
+
+          echo "BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
+
+      - name: Smoke test health
+        run: |
+          curl --fail --show-error \
+            "$BACKEND_URL/api/health"
+
+      - name: Smoke test version
+        run: |
+          curl --fail --show-error \
+            "$BACKEND_URL/api/version"
